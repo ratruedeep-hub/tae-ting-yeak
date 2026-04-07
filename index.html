@@ -52,7 +52,6 @@
         .page.active { display: flex; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
-        /* Logos Styling */
         .logo-top { width: 100%; max-width: 240px; margin-bottom: 10px; display: block; margin-top: 10px; }
         .logo-bottom { width: 100%; max-width: 160px; margin-top: auto; margin-bottom: 20px; display: block; }
 
@@ -60,7 +59,6 @@
         .hero-text h1 { font-size: 32px; font-weight: 800; color: var(--primary); line-height: 1.1; }
         .hero-text p { font-size: 18px; color: var(--secondary); font-weight: 700; margin-top: 5px; }
 
-        /* Stats Section */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; width: 100%; }
         .stat-card { background: white; padding: 12px 5px; border-radius: 20px; text-align: center; border: 2px solid #edf2f7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .stat-label { font-size: 11px; color: #718096; font-weight: 700; text-transform: uppercase; }
@@ -70,12 +68,10 @@
         .animate-score { animation: scoreFloat 0.6s ease-out forwards; }
         @keyframes scoreFloat { 0% { opacity: 0; transform: translate(-50%, 0); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -35px); } }
 
-        /* Timer */
         .timer-zone { margin-bottom: 20px; position: relative; width: 100%; }
         .timer-bar { background: #E2E8F0; height: 14px; border-radius: 99px; overflow: hidden; border: 2px solid white; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
         .timer-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #185FA5, #4299E1); transition: width 0.1s linear; }
 
-        /* Item Display Card - Larger and Centered */
         .item-box {
             background: white;
             padding: 30px 20px;
@@ -103,7 +99,6 @@
         .fb-ok { background: #C6F6D5; color: #22543D; }
         .fb-no { background: #FED7D7; color: #822727; }
 
-        /* Bins List - Large buttons pushed to bottom */
         .bins-list {
             display: flex;
             flex-direction: column;
@@ -114,7 +109,7 @@
         }
         .bin-btn {
             width: 100%;
-            height: 70px; /* Big buttons */
+            height: 70px;
             border-radius: 20px;
             border: none;
             color: white;
@@ -152,7 +147,6 @@
         .notice-card { background: var(--bg-green-light); color: var(--secondary); padding: 20px; border-radius: 25px; font-size: 15px; border: 2px dashed var(--secondary); margin-bottom: 25px; font-weight: 600; line-height: 1.6; width: 100%; }
         .notice-card strong { font-weight: 800; font-size: 18px; display: block; margin-bottom: 8px; color: var(--secondary); }
 
-        /* Result Page */
         .result-box {
             background: white;
             border-radius: 40px;
@@ -171,7 +165,6 @@
         .timer-panic { animation: timerPanic 0.2s infinite; }
         @keyframes timerPanic { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        /* Responsive adjustments for small screens */
         @media (max-width: 400px) {
             .hero-text h1 { font-size: 26px; }
             .hero-text p { font-size: 16px; }
@@ -199,7 +192,6 @@
             .logo-top { max-width: 170px; }
         }
 
-        /* Short screen heights - compact game layout */
         @media (max-height: 650px) {
             .item-box { padding: 15px 10px; min-height: 100px; margin: 5px 0 10px 0; }
             .item-name { font-size: 30px; }
@@ -272,7 +264,6 @@
 
         <div class="feedback-box" id="game-feedback">เลือกถังขยะด้านล่างเลย!</div>
 
-        <!-- Bins at the bottom for easy access -->
         <div class="bins-list">
             <button class="bin-btn btn-green" onclick="checkAnswer('green')" id="bin-green">ถังสีเขียว (ย่อยสลายได้)</button>
             <button class="bin-btn btn-blue" onclick="checkAnswer('blue')" id="bin-blue">ถังน้ำเงิน (ขยะทั่วไป)</button>
@@ -348,40 +339,61 @@ function shuffleArray(array) {
     return cur;
 }
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// ✅ แก้ไข: สร้าง AudioContext แบบ lazy (สร้างตอนกดครั้งแรก ไม่ใช่ตอนโหลดหน้า)
+let audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+}
+
 function playTone(freq, type, dur, vol=0.1) {
-    if(!state.audio) return;
+    if (!state.audio) return;
     try {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
         osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + dur);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + dur);
     } catch (e) {}
 }
 
-function playCorrect() { playTone(600, 'sine', 0.2); setTimeout(()=>playTone(900, 'sine', 0.3), 60); }
+function playCorrect() { playTone(600, 'sine', 0.2); setTimeout(() => playTone(900, 'sine', 0.3), 60); }
 function playWrong() { playTone(150, 'square', 0.4, 0.05); }
 
 function toggleAudio() {
     state.audio = !state.audio;
     document.getElementById('audio-toggle').textContent = state.audio ? '🔊' : '🔇';
-    if(audioCtx.state === 'suspended') audioCtx.resume();
+    try {
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+    } catch(e) {}
 }
 
 function startGame() {
     const input = document.getElementById('player-name');
     const name = input.value.trim();
-    if(!name) {
+    if (!name) {
         input.classList.add('input-error');
         setTimeout(() => input.classList.remove('input-error'), 1000);
         return;
     }
     state.playerName = name;
-    if(audioCtx.state === 'suspended') audioCtx.resume();
+
+    // ✅ แก้ไข: สร้าง AudioContext ตอนกดปุ่มเริ่มเกม (หลัง user interaction)
+    try {
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+    } catch(e) {}
+
     state.score = 0; state.combo = 1; state.time = 30; state.active = true;
     state.correct = 0; state.total = 0;
     state.itemPool = shuffleArray(ITEMS);
@@ -391,13 +403,13 @@ function startGame() {
     nextItem();
     state.timerId = setInterval(() => {
         state.time -= 0.1;
-        if(state.time <= 0) endGame();
+        if (state.time <= 0) endGame();
         updateTimerUI();
     }, 100);
 }
 
 function nextItem() {
-    if(state.itemPool.length === 0) state.itemPool = shuffleArray(ITEMS);
+    if (state.itemPool.length === 0) state.itemPool = shuffleArray(ITEMS);
     let item = state.itemPool.pop();
     state.currentItem = item;
     document.getElementById('target-item').textContent = item.n;
@@ -408,14 +420,14 @@ function nextItem() {
 }
 
 function checkAnswer(bin) {
-    if(!state.active) return;
+    if (!state.active) return;
     state.total++;
     const item = state.currentItem;
     const isCorrect = item.b === bin;
     document.querySelectorAll('.bin-btn').forEach(b => b.disabled = true);
     const fb = document.getElementById('game-feedback');
 
-    if(isCorrect) {
+    if (isCorrect) {
         playCorrect();
         state.correct++;
         const addedScore = 10 * state.combo;
@@ -425,7 +437,7 @@ function checkAnswer(bin) {
         state.combo = Math.min(state.combo + 1, 5);
         fb.textContent = "เยี่ยม! แยกถูกต้อง";
         fb.className = "feedback-box fb-ok";
-        document.getElementById('bin-'+bin).classList.add('btn-correct-anim');
+        document.getElementById('bin-' + bin).classList.add('btn-correct-anim');
         setTimeout(() => { resetFB(); nextItem(); }, 600);
     } else {
         playWrong();
@@ -433,8 +445,8 @@ function checkAnswer(bin) {
         const info = BIN_DATA[item.b];
         fb.textContent = `ผิด! ต้องทิ้งถัง${info.label}`;
         fb.className = "feedback-box fb-no";
-        document.getElementById('bin-'+bin).classList.add('shake');
-        const correctBtnId = item.b === 'red2' ? 'bin-red2' : 'bin-'+item.b;
+        document.getElementById('bin-' + bin).classList.add('shake');
+        const correctBtnId = item.b === 'red2' ? 'bin-red2' : 'bin-' + item.b;
         document.getElementById(correctBtnId).classList.add('btn-correct-anim');
         setTimeout(() => { resetFB(); nextItem(); }, 1600);
     }
@@ -466,7 +478,7 @@ function updateTimerUI() {
     const outer = document.getElementById('timer-outer');
     const pct = (state.time / 30) * 100;
     fill.style.width = Math.min(100, pct) + '%';
-    if(state.time <= 7) {
+    if (state.time <= 7) {
         outer.classList.add('timer-panic');
         fill.style.background = 'var(--danger)';
     } else {
